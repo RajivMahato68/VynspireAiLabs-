@@ -1,10 +1,13 @@
 import LoginPage from "@/components/form/login";
+import PublicRoute from "@/components/routeProtection/publicRoute";
 import React from "react";
 
 const page = () => {
   return (
     <div>
-      <LoginPage />
+      <PublicRoute>
+        <LoginPage />
+      </PublicRoute>
     </div>
   );
 };
