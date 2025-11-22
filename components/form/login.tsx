@@ -15,26 +15,42 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useLogin } from "@/app/hooks/useLogin";
+import { useAuthStore } from "@/app/store/useAuthStore";
 
 const loginSchema = z.object({
-  email: z.string().email("Invalid email"),
+  username: z.string().min(3, "Username required"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { mutate, isPending } = useLogin();
+  const loginStore = useAuthStore();
+
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
   });
 
   const onSubmit = (data: LoginForm) => {
-    toast.success("Login successful!");
-    console.log(data);
+    mutate(data, {
+      onSuccess: () => {
+        toast.success("Login successful!");
+        reset(); // reset form
+        router.push("/blog"); // redirect
+      },
+      onError: () => {
+        toast.error("Invalid username or password");
+      },
+    });
   };
 
   return (
@@ -46,14 +62,15 @@ export default function LoginPage() {
             Enter your credentials to access your account
           </CardDescription>
         </CardHeader>
+
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" {...register("email")} />
-              {errors.email && (
+              <Label htmlFor="username">Username</Label>
+              <Input id="username" {...register("username")} />
+              {errors.username && (
                 <p className="text-sm text-red-500 mt-1">
-                  {errors.email.message}
+                  {errors.username.message}
                 </p>
               )}
             </div>
@@ -68,13 +85,13 @@ export default function LoginPage() {
               )}
             </div>
 
-            <Button type="submit" className="w-full">
-              Login
+            <Button type="submit" className="w-full" disabled={isPending}>
+              {isPending ? "Logging in..." : "Login"}
             </Button>
           </form>
 
           <p className="text-center mt-6 text-sm">
-            Dont have an account?{" "}
+            Don’t have an account?{" "}
             <Link href="/register" className="text-primary font-medium">
               Register
             </Link>

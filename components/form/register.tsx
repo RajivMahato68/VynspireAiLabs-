@@ -22,6 +22,9 @@ import {
   SelectContent,
   SelectValue,
 } from "@/components/ui/select";
+import { useRouter } from "next/navigation";
+import { useRegister } from "@/app/hooks/useRegister";
+import { useUserStore } from "@/app/store/useRegisterStore";
 
 const registerSchema = z
   .object({
@@ -29,7 +32,7 @@ const registerSchema = z
     email: z.string().email("Invalid email"),
     password: z.string().min(6, "Password must be at least 6 characters"),
     confirmPassword: z.string(),
-    role: z.enum(["ADMIN", "USER"] as const, {
+    role: z.enum(["ADMIN", "USER"], {
       message: "Please choose a role",
     }),
   })
@@ -41,25 +44,50 @@ const registerSchema = z
 type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
+  const router = useRouter();
   const {
     register,
     handleSubmit,
     formState: { errors },
     setValue,
+    reset,
   } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
   });
 
-  const onSubmit = (data: RegisterForm) => {
-    const requestBody = {
+  const { mutateAsync, isPending } = useRegister();
+  const setUser = useUserStore((state) => state.setUser);
+
+  const onSubmit = async (data: RegisterForm) => {
+    const body = {
       email: data.email,
       password: data.password,
-      role: data.role,
       username: data.username,
+      role: data.role,
     };
 
-    console.log("Submitting:", requestBody);
-    toast.success("Account created successfully!");
+    try {
+      const res = await mutateAsync(body);
+
+      setUser(res.data);
+
+      toast.success("Account created successfully!");
+
+      reset();
+
+      setTimeout(() => {
+        router.push("/login");
+      }, 800);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else if (typeof error === "object" && error !== null) {
+        const err = error as { response?: { data?: { message?: string } } };
+        toast.error(err.response?.data?.message ?? "Registration failed");
+      } else {
+        toast.error("Registration failed");
+      }
+    }
   };
 
   return (
@@ -72,7 +100,6 @@ export default function RegisterPage() {
 
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {/* Username */}
             <div>
               <Label htmlFor="username">Username</Label>
               <Input id="username" {...register("username")} />
@@ -83,7 +110,6 @@ export default function RegisterPage() {
               )}
             </div>
 
-            {/* Email */}
             <div>
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" {...register("email")} />
@@ -94,7 +120,6 @@ export default function RegisterPage() {
               )}
             </div>
 
-            {/* Password */}
             <div>
               <Label htmlFor="password">Password</Label>
               <Input id="password" type="password" {...register("password")} />
@@ -105,7 +130,6 @@ export default function RegisterPage() {
               )}
             </div>
 
-            {/* Confirm Password */}
             <div>
               <Label htmlFor="confirmPassword">Confirm Password</Label>
               <Input
@@ -120,7 +144,6 @@ export default function RegisterPage() {
               )}
             </div>
 
-            {/* Role Selection */}
             <div>
               <Label>Role</Label>
               <Select
@@ -143,9 +166,8 @@ export default function RegisterPage() {
               )}
             </div>
 
-            {/* Submit */}
-            <Button type="submit" className="w-full">
-              Register
+            <Button type="submit" className="w-full" disabled={isPending}>
+              {isPending ? "Registering..." : "Register"}
             </Button>
           </form>
 

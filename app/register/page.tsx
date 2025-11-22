@@ -1,10 +1,12 @@
 import RegisterPage from "@/components/form/register";
-import React from "react";
+import PublicRoute from "@/components/routeProtection/publicRoute";
 
 const page = () => {
   return (
     <div>
-      <RegisterPage />
+      <PublicRoute>
+        <RegisterPage />
+      </PublicRoute>
     </div>
   );
 };
